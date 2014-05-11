@@ -101,7 +101,7 @@ module PaperTrail
 
       without_identity_map do
         options[:has_one] = 3 if options[:has_one] == true
-        options.reverse_merge! :has_one => false
+        options.reverse_merge! has_one: false, has_many: false
 
         attrs = self.class.object_col_is_json? ? object : PaperTrail.serializer.load(object)
 
@@ -144,6 +144,10 @@ module PaperTrail
 
         unless options[:has_one] == false
           reify_has_ones model, options[:has_one]
+        end
+
+        unless options[:has_many] == false
+          reify_has_manies model
         end
 
         model
@@ -228,6 +232,27 @@ module PaperTrail
           else
             model.send "#{assoc.name}=", nil
           end
+        end
+      end
+    end
+
+    # Restore the `model`'s has_many associations as they were when this version was
+    # superseded by the next (because that's what the user was looking at when they
+    # made the change). Only restores associations where the foreign keys were saved
+    # in children[:model_name] = [model_id_1, model_id_2, ..]
+    # The user should add
+    # serialize :children, Hash
+    # to his version class (or we should implement has_many support gem-wide)
+    def reify_has_manies(model)
+      # If the version defines a children method (hash)
+      if (send :children)
+        children.each do |model_name, model_ids|
+          # find the children as they were at created_at
+          model_ids.each do |model_id|
+            eval(model_name.to_s.classify).find_live_or_destroyed_at(model_id, self.created_at).save!
+          end
+          # Delete any other children that currently exist
+          eval(model_name.to_s.classify).send(:destroy, (item.send(model_name).map(&:id) - model_ids))
         end
       end
     end

@@ -161,6 +161,22 @@ module PaperTrail
           end
         end
       end
+
+      # Returns live Product with given `id` if one exists,
+      #  if not attempts to locate the last stored version prior to destruction.
+      # `nil` will be returned if no record can be found of a `Product` with the given `id`.
+      def find_live_or_destroyed(id)
+        self.find_by_id(id) ||
+          eval(version_class_name).order("#{PaperTrail.timestamp_field} DESC").find_by_item_id(id).try(:reify)
+      end
+
+      # Employs the `find_by_live_or_destroyed` method to attempt to locate the last known record for Product
+      #  with given `id`.  Then invokes `version_at` method to locate the version that matches the given `timestamp`.
+      # `nil` will be returned if no record can be found of `Product` with given `id`.
+      def find_live_or_destroyed_at(id, timestamp)
+        _item = self.find_live_or_destroyed(id)
+        _item.version_at(timestamp) rescue nil
+      end
     end
 
     # Wrap the following methods in a module so we can include them only in the
