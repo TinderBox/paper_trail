@@ -252,7 +252,7 @@ module PaperTrail
             eval(model_name.to_s.classify).find_live_or_destroyed_at(model_id, self.created_at).save!
           end
           # Delete any other children that currently exist
-          eval(model_name.to_s.classify).send(:destroy, (item.send(model_name).map(&:id) - model_ids))
+          eval(model_name.to_s.classify).send(:destroy, (model.send(model_name).map(&:id) - model_ids))
         end
       end
     end
