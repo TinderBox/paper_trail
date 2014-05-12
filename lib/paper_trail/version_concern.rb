@@ -248,9 +248,9 @@ module PaperTrail
       if (send :children)
         children.each do |model_name, model_ids|
           # find the children as they were at created_at
-          model_ids.each do |model_id|
+          model.send("#{model_name}=", model_ids.each do |model_id|
             eval(model_name.to_s.classify).find_live_or_destroyed_at(model_id, self.created_at).save!
-          end
+          end)
           # Delete any other children that currently exist
           eval(model_name.to_s.classify).send(:destroy, (model.send(model_name).map(&:id) - model_ids))
         end
