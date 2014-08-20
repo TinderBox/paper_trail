@@ -1,10 +1,12 @@
-require 'paper_trail/config'
-require 'paper_trail/has_paper_trail'
-require 'paper_trail/cleaner'
-require 'paper_trail/version_number'
+# Require core library
+Dir[File.join(File.dirname(__FILE__), 'paper_trail', '*.rb')].each do |file|
+  require File.join('paper_trail', File.basename(file, '.rb'))
+end
 
 # Require serializers
-Dir[File.join(File.dirname(__FILE__), 'paper_trail', 'serializers', '*.rb')].each { |file| require file }
+Dir[File.join(File.dirname(__FILE__), 'paper_trail', 'serializers', '*.rb')].each do |file|
+  require File.join('paper_trail', 'serializers', File.basename(file, '.rb'))
+end
 
 module PaperTrail
   extend PaperTrail::Cleaner
@@ -118,21 +120,16 @@ unless PaperTrail.active_record_protected_attributes?
   rescue LoadError; end # will rescue if `ProtectedAttributes` gem is not available
 end
 
-require 'paper_trail/version'
-
 ActiveSupport.on_load(:active_record) do
   include PaperTrail::Model
 end
 
 # Require frameworks
 require 'paper_trail/frameworks/sinatra'
-require 'paper_trail/frameworks/rspec' if defined? RSpec
-require 'paper_trail/frameworks/cucumber' if defined? World
-
-if defined?(ActionController)
+if defined? Rails
   require 'paper_trail/frameworks/rails'
-
-  ActiveSupport.on_load(:action_controller) do
-    include PaperTrail::Rails::Controller
-  end
+else
+  require 'paper_trail/frameworks/active_record'
 end
+require 'paper_trail/frameworks/rspec' if defined? RSpec::Core
+require 'paper_trail/frameworks/cucumber' if defined? World

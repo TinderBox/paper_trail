@@ -1,4 +1,37 @@
-## 3.0.2 (Unreleased)
+## 3.1.0 (Unreleased)
+
+  - [#399](https://github.com/airblade/paper_trail/pull/399) - Add `:dup` argument for options hash to `reify` which forces a
+    new model instance.
+  - [#398](https://github.com/airblade/paper_trail/pull/398) - Only require the `RSpec` helper if `RSpec::Core` is required.
+  - [#394](https://github.com/airblade/paper_trail/pull/394) - Add RSpec matcher `have_a_version_with` for easier testing.
+  - [#375](https://github.com/airblade/paper_trail/pull/375) / [#374](https://github.com/airblade/paper_trail/issues/374) /
+    [#354](https://github.com/airblade/paper_trail/issues/354) / [#131](https://github.com/airblade/paper_trail/issues/131) -
+    Versions should be built with `after_` callbacks so the timestamp field for a version can be forced to match the
+    corresponding timestamp in the database for the state persistence of a change to the base (versioned) model.
+
+## 3.0.3
+
+##### Breaking change: if you use a custom initializer for PaperTrail in conjunction with Rails, you will need to add this line of code to the beginning of it:
+```ruby
+PaperTrail::Rails::Engine.eager_load!
+```
+
+  - [#386](https://github.com/airblade/paper_trail/issues/386) - Fix eager loading of `versions` association with custom class name
+    in `ActiveRecord` 4.1.
+  - [#384](https://github.com/airblade/paper_trail/issues/384) - Fix `VersionConcern#originator` instance method.
+  - [#383](https://github.com/airblade/paper_trail/pull/383) - Make gem compatible with `ActiveRecord::Enum` (available in `ActiveRecord` 4.1+).
+  - [#380](https://github.com/airblade/paper_trail/pull/380) / [#377](https://github.com/airblade/paper_trail/issues/377) -
+    Add `VersionConcern#where_object` instance method; acts as a helper for querying against the `object` column in versions table.
+  - [#373](https://github.com/airblade/paper_trail/pull/373) - Fix default sort order for the `versions` association in `ActiveRecord` 4.1.
+  - [#372](https://github.com/airblade/paper_trail/pull/372) - Use [Arel](https://github.com/rails/arel) for SQL construction.
+  - [#365](https://github.com/airblade/paper_trail/issues/365) - `VersionConcern#version_at` should return `nil` when receiving a timestamp
+    that occured after the object was destroyed.
+  - [#347](https://github.com/airblade/paper_trail/pull/347) - Autoload `ActiveRecord` models in via a `Rails::Engine` when
+    the gem is used with `Rails`.
+  - Expand `PaperTrail::VERSION` into a module, mimicking the form used by Rails to give it some additional modularity & versatility.
+  - Fixed `VersionConcern#index` instance method so that it conforms to using the primary key for ordering when possible.
+
+## 3.0.2
 
   - [#357](https://github.com/airblade/paper_trail/issues/357) - If a `Version` instance is reified and then persisted at that state,
     it's timestamp attributes for update should still get `touch`ed.

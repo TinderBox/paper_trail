@@ -61,7 +61,7 @@ module PaperTrail
 
         if ::ActiveRecord::VERSION::MAJOR >= 4 # `has_many` syntax for specifying order uses a lambda in Rails 4
           has_many self.versions_association_name,
-            lambda { |model| order(model.version_class_name.constantize.timestamp_sort_order) },
+            lambda { order(model.timestamp_sort_order) },
             :class_name => self.version_class_name, :as => :item
         else
           has_many self.versions_association_name,
@@ -74,7 +74,7 @@ module PaperTrail
         after_create  :record_create, :if => :save_version? if options_on.empty? || options_on.include?(:create)
         if options_on.empty? || options_on.include?(:update)
           before_save   :reset_timestamp_attrs_for_update_if_needed!, :on => :update
-          before_update :record_update, :if => :save_version?
+          after_update  :record_update, :if => :save_version?
           after_update  :clear_version_instance!
         end
         after_destroy :record_destroy, :if => :save_version? if options_on.empty? || options_on.include?(:destroy)
@@ -190,7 +190,7 @@ module PaperTrail
 
       # Returns who put the object into its current state.
       def originator
-        @originator ||= self.class.paper_trail_version_class.with_item_keys(self.class.base_class.name, id).last.try :whodunnit
+        (source_version || send(self.class.versions_association_name).last).try(:whodunnit)
       end
 
       # Returns the object (not a Version) as it was at the given timestamp.
@@ -198,7 +198,8 @@ module PaperTrail
         # Because a version stores how its object looked *before* the change,
         # we need to look for the first version created *after* the timestamp.
         v = send(self.class.versions_association_name).subsequent(timestamp, true).first
-        v ? v.reify(reify_options) : self
+        return v.reify(reify_options) if v
+        self unless self.destroyed?
       end
 
       # Returns the objects (not Versions) as they were between the given times.
@@ -274,7 +275,9 @@ module PaperTrail
             :event     => paper_trail_event || 'create',
             :whodunnit => PaperTrail.whodunnit
           }
-
+          if respond_to?(:created_at)
+            data[PaperTrail.timestamp_field] = created_at
+          end
           if changed_notably? and self.class.paper_trail_version_class.column_names.include?('object_changes')
             data[:object_changes] = self.class.paper_trail_version_class.object_changes_col_is_json? ? changes_for_paper_trail :
               PaperTrail.serializer.dump(changes_for_paper_trail)
@@ -291,12 +294,14 @@ module PaperTrail
             :object    => self.class.paper_trail_version_class.object_col_is_json? ? object_attrs : PaperTrail.serializer.dump(object_attrs),
             :whodunnit => PaperTrail.whodunnit
           }
-
+          if respond_to?(:updated_at)
+            data[PaperTrail.timestamp_field] = updated_at
+          end
           if self.class.paper_trail_version_class.column_names.include?('object_changes')
             data[:object_changes] = self.class.paper_trail_version_class.object_changes_col_is_json? ? changes_for_paper_trail :
               PaperTrail.serializer.dump(changes_for_paper_trail)
           end
-          send(self.class.versions_association_name).build merge_metadata(data)
+          send(self.class.versions_association_name).create merge_metadata(data)
         end
       end
 
@@ -306,7 +311,7 @@ module PaperTrail
         end.tap { |changes| self.class.serialize_attribute_changes(changes) }
       end
 
-      # Invoked via `after_update` callback for when a previous version is reified and then saved
+      # Invoked via`after_update` callback for when a previous version is reified and then saved
       def clear_version_instance!
         send("#{self.class.version_association_name}=", nil)
       end
@@ -358,9 +363,13 @@ module PaperTrail
         all_timestamp_attributes.each do |column|
           previous[column] = send(column) if self.class.column_names.include?(column.to_s) and not send(column).nil?
         end
+        enums = previous.respond_to?(:defined_enums) ? previous.defined_enums : {}
         previous.tap do |prev|
           prev.id = id # `dup` clears the `id` so we add that back
-          changed_attributes.select { |k,v| self.class.column_names.include?(k) }.each { |attr, before| prev[attr] = before }
+          changed_attributes.select { |k,v| self.class.column_names.include?(k) }.each do |attr, before|
+            before = enums[attr][before] if enums[attr]
+            prev[attr] = before
+          end
         end
       end
 

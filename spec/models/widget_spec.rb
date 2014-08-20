@@ -7,6 +7,20 @@ describe Widget do
 
   let(:widget) { Widget.create! :name => 'Bob', :an_integer => 1 }
 
+  describe '`have_a_version_with` matcher', :versioning => true do
+    before do
+      widget.update_attributes!(:name => 'Leonard', :an_integer => 1 )
+      widget.update_attributes!(:name => 'Tom')
+      widget.update_attributes!(:name => 'Bob')
+    end
+
+    it "is possible to do assertions on versions" do
+       widget.should have_a_version_with :name => 'Leonard', :an_integer => 1
+       widget.should have_a_version_with :an_integer => 1
+       widget.should have_a_version_with :name => 'Tom'
+    end
+  end
+
   describe "`versioning` option" do
     context :enabled, :versioning => true do
       it 'should enable versioning for models wrapped within a block' do
@@ -34,8 +48,16 @@ describe Widget do
       end
     end
 
+    describe :after_create do
+      let(:widget) { Widget.create!(:name => 'Foobar', :created_at => Time.now - 1.week) }
+
+      it "corresponding version should use the widget's `created_at`" do
+        widget.versions.last.created_at.to_i.should == widget.created_at.to_i
+      end
+    end
+
     describe :after_update do
-      before { widget.update_attributes!(:name => 'Foobar') }
+      before { widget.update_attributes!(:name => 'Foobar', :updated_at => Time.now + 1.week) }
 
       subject { widget.versions.last.reify }
 
@@ -44,6 +66,10 @@ describe Widget do
       it "should clear the `versions_association_name` virtual attribute" do
         subject.save!
         subject.should be_live
+      end
+
+      it "corresponding version should use the widget updated_at" do
+        widget.versions.last.created_at.to_i.should == widget.updated_at.to_i
       end
     end
 
@@ -61,8 +87,84 @@ describe Widget do
     end
   end
 
+  describe "Association", :versioning => true do
+    describe "sort order" do
+      it "should sort by the timestamp order from the `VersionConcern`" do
+        widget.versions.to_sql.should ==
+          widget.versions.reorder(PaperTrail::Version.timestamp_sort_order).to_sql
+      end
+    end
+  end
+
   describe "Methods" do
     describe "Instance", :versioning => true do
+      describe :originator do
+        it { should respond_to(:originator) }
+
+        describe "return value" do
+          let(:orig_name) { Faker::Name.name }
+          let(:new_name) { Faker::Name.name }
+          before { PaperTrail.whodunnit = orig_name }
+
+          context "accessed from live model instance" do
+            specify { widget.should be_live }
+
+            it "should return the originator for the model at a given state" do
+              widget.originator.should == orig_name
+              widget.whodunnit(new_name) { |w| w.update_attributes(:name => 'Elizabeth') }
+              widget.originator.should == new_name
+            end
+          end
+
+          context "accessed from a reified model instance" do
+            before do
+              widget.update_attributes(:name => 'Andy')
+              PaperTrail.whodunnit = new_name
+              widget.update_attributes(:name => 'Elizabeth')
+            end
+
+            context "default behavior (no `options[:dup]` option passed in)" do
+              let(:reified_widget) { widget.versions[1].reify }
+
+              it "should return the appropriate originator" do
+                reified_widget.originator.should == orig_name
+              end
+
+              it "should not create a new model instance" do
+                reified_widget.should_not be_new_record
+              end
+            end
+
+            context "creating a new instance (`options[:dup] == true`)" do
+              let(:reified_widget) { widget.versions[1].reify(:dup => true) }
+
+              it "should return the appropriate originator" do
+                reified_widget.originator.should == orig_name
+              end
+
+              it "should not create a new model instance" do
+                reified_widget.should be_new_record
+              end
+            end
+          end
+        end
+      end
+
+      describe :version_at do
+        it { should respond_to(:version_at) }
+
+        context "Timestamp argument is AFTER object has been destroyed" do
+          before do
+            widget.update_attribute(:name, 'foobar')
+            widget.destroy
+          end
+
+          it "should return `nil`" do
+            widget.version_at(Time.now).should be_nil
+          end
+        end
+      end
+
       describe :whodunnit do
         it { should respond_to(:whodunnit) }
 
@@ -127,9 +229,9 @@ describe Widget do
         it { should respond_to(:paper_trail_off!) }
 
         it 'should set the `paper_trail_enabled_for_model?` to `false`' do
-          subject.paper_trail_enabled_for_model?.should be_true
+          subject.paper_trail_enabled_for_model?.should == true
           subject.paper_trail_off!
-          subject.paper_trail_enabled_for_model?.should be_false
+          subject.paper_trail_enabled_for_model?.should == false
         end
       end
 
@@ -154,9 +256,9 @@ describe Widget do
         it { should respond_to(:paper_trail_on!) }
 
         it 'should set the `paper_trail_enabled_for_model?` to `true`' do
-          subject.paper_trail_enabled_for_model?.should be_false
+          subject.paper_trail_enabled_for_model?.should == false
           subject.paper_trail_on!
-          subject.paper_trail_enabled_for_model?.should be_true
+          subject.paper_trail_enabled_for_model?.should == true
         end
       end
 
