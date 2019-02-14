@@ -19,28 +19,28 @@ Gem::Specification.new do |s|
 
   s.required_rubygems_version = '>= 1.3.6'
 
-  s.add_dependency 'activerecord', ['>= 3.0', '< 5.0']
-  s.add_dependency 'activesupport', ['>= 3.0', '< 5.0']
+  s.add_dependency 'activerecord', ['>= 3.0', '< 6.0']
+  s.add_dependency 'activesupport', ['>= 3.0', '< 6.0']
 
-  s.add_development_dependency 'rake', '~> 10.1.1'
+  s.add_development_dependency 'rake', '~> 12.3'
   s.add_development_dependency 'shoulda', '~> 3.5'
   # s.add_development_dependency 'shoulda-matchers', '~> 1.5' # needed for ActiveRecord < 4
-  s.add_development_dependency 'ffaker',  '>= 1.15'
-  s.add_development_dependency 'railties', ['>= 3.0', '< 5.0']
-  s.add_development_dependency 'sinatra', '~> 1.0'
+  s.add_development_dependency 'ffaker',  '~> 2.8'
+  s.add_development_dependency 'railties', ['>= 3.0', '< 6.0']
+  s.add_development_dependency 'sinatra', '~> 2.0.5'
   s.add_development_dependency 'rack-test', '>= 0.6'
-  s.add_development_dependency 'rspec-rails', '~> 2.14'
+  s.add_development_dependency 'rspec-rails', '~> 3.6.1'
   s.add_development_dependency 'generator_spec'
-  s.add_development_dependency 'database_cleaner', '~> 1.2'
+  s.add_development_dependency 'database_cleaner', '~> 1.3'
 
   # JRuby support for the test ENV
   unless defined?(JRUBY_VERSION)
     s.add_development_dependency 'sqlite3', '~> 1.2'
-    s.add_development_dependency 'mysql2', '~> 0.3'
-    s.add_development_dependency 'pg', '~> 0.17'
+    s.add_development_dependency 'mysql2', '~> 0.5.2'
+    s.add_development_dependency 'pg', '~> 1.0'
   else
-    s.add_development_dependency 'activerecord-jdbcsqlite3-adapter', '~> 1.3'
-    s.add_development_dependency 'activerecord-jdbcpostgresql-adapter', '~> 1.3'
-    s.add_development_dependency 'activerecord-jdbcmysql-adapter', '~> 1.3'
+    s.add_development_dependency 'activerecord-jdbcsqlite3-adapter', '~> v52.1'
+    s.add_development_dependency 'activerecord-jdbcpostgresql-adapter', '~> v52.1'
+    s.add_development_dependency 'activerecord-jdbcmysql-adapter', '~> v52.1'
   end
 end
