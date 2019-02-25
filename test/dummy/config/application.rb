@@ -45,20 +45,40 @@ module Dummy
     # like if you have constraints or database-specific column types
     # config.active_record.schema_format = :sql
 
-    # Enforce whitelist mode for mass assignment.
-    # This will create an empty whitelist of attributes available for mass-assignment for all models
-    # in your app. As such, your models will need to explicitly whitelist or blacklist accessible
-    # parameters by using an attr_accessible or attr_protected declaration.
-    config.active_record.whitelist_attributes = false if ::PaperTrail.active_record_protected_attributes?
-
-    # Enable the asset pipeline
-    config.assets.enabled = false
-
     # Version of your assets, change this if you want to expire all your assets
     # config.assets.version = '1.0'
 
+    # Disable assets in rails 4.2. In rails 5, config does not respond to
+    # assets, probably because it was moved out of railties to some other gem,
+    # and we only have dev. dependencies on railties, not all of rails. When
+    # we drop support for rails 4.2, we can remove this whole conditional.
+    if config.respond_to?(:assets)
+      config.assets.enabled = false
+    end
+
     # Rails 4 key for generating secret key
     config.secret_key_base = 'A fox regularly kicked the screaming pile of biscuits.'
+
+    # `raise_in_transactional_callbacks` was added in rails 4, then deprecated
+    # in rails 5. Oh, how fickle are the gods.
+    if ActiveRecord.respond_to?(:gem_version)
+      v = ActiveRecord.gem_version
+      if v >= Gem::Version.new("4.2") && v < Gem::Version.new("5.0.0.beta1")
+        config.active_record.raise_in_transactional_callbacks = true
+      end
+      if v >= Gem::Version.new("5.0.0.beta1") && v < Gem::Version.new("5.1")
+        config.active_record.belongs_to_required_by_default = true
+        config.active_record.time_zone_aware_types = [:datetime]
+      end
+      if v >= Gem::Version.new("5.1")
+        config.load_defaults "5.1"
+        config.active_record.time_zone_aware_types = [:datetime]
+      end
+    end
+
+    if ::ENV["DB"] == "sqlite" && ::Rails.gem_version >= ::Gem::Version.new("5.2")
+      config.active_record.sqlite3.represent_boolean_as_integer = true
+    end
 
     # supress warnings about raises in transactional callbacks on AR 4.2+
     config.active_record.raise_in_transactional_callbacks = true if ActiveRecord::VERSION::STRING >= '4.2'

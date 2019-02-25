@@ -115,11 +115,8 @@ module PaperTrail
         # don't serialize before values before inserting into columns of type `JSON` on `PostgreSQL` databases
         return attributes if self.paper_trail_version_class.object_col_is_json?
 
-        serialized_attributes.each do |key, coder|
-          if attributes.key?(key)
-            coder = PaperTrail::Serializers::YAML unless coder.respond_to?(:dump) # Fall back to YAML if `coder` has no `dump` method
-            attributes[key] = coder.dump(attributes[key])
-          end
+        attributes.each do |key, value|
+          attributes[key] = type_for_attribute(key).serialize(value)
         end
       end
 
@@ -127,11 +124,8 @@ module PaperTrail
         # don't serialize before values before inserting into columns of type `JSON` on `PostgreSQL` databases
         return attributes if self.paper_trail_version_class.object_col_is_json?
 
-        serialized_attributes.each do |key, coder|
-          if attributes.key?(key)
-            coder = PaperTrail::Serializers::YAML unless coder.respond_to?(:dump)
-            attributes[key] = coder.load(attributes[key])
-          end
+        attributes.each do |key, value|
+          attributes[key] = type_for_attribute(key).deserialize(value)
         end
       end
 
@@ -140,13 +134,9 @@ module PaperTrail
         # don't serialize before values before inserting into columns of type `JSON` on `PostgreSQL` databases
         return changes if self.paper_trail_version_class.object_changes_col_is_json?
 
-        serialized_attributes.each do |key, coder|
-          if changes.key?(key)
-            coder = PaperTrail::Serializers::YAML unless coder.respond_to?(:dump) # Fall back to YAML if `coder` has no `dump` method
-            old_value, new_value = changes[key]
-            changes[key] = [coder.dump(old_value),
-                            coder.dump(new_value)]
-          end
+        changes.clone.each do |key, change|
+          type = type_for_attribute(key)
+          changes[key] = Array(change).map { |value| type.serialize(value)}
         end
       end
 
@@ -154,13 +144,9 @@ module PaperTrail
         # don't serialize before values before inserting into columns of type `JSON` on `PostgreSQL` databases
         return changes if self.paper_trail_version_class.object_changes_col_is_json?
 
-        serialized_attributes.each do |key, coder|
-          if changes.key?(key)
-            coder = PaperTrail::Serializers::YAML unless coder.respond_to?(:dump)
-            old_value, new_value = changes[key]
-            changes[key] = [coder.load(old_value),
-                            coder.load(new_value)]
-          end
+        changes.clone.each do |key, change|
+          type = type_for_attribute(key)
+          changes[key] = Array(change).map { |value| type.deserialize(value)}
         end
       end
     end
